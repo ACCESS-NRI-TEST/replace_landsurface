@@ -1,9 +1,9 @@
 name: CD
 
 on:
-    push:
-      tags:
-        - '**'
+  push:
+    tags:        
+      - '**' 
 
 jobs:
   validate-tag:
@@ -18,17 +18,18 @@ jobs:
       
       - name: Validate tag
         run: |
-          # If previous tag is X.Y, valid tags are only X.(Y+1) or (X+1).0
-          prev=($(git tag -l --sort=-v:refname | head -n 2 | tail -n 1 | tr "." " "))
-          val1="${prev[0]}.$((${prev[1]}+1))" # X.(Y+1)
-          val2="$((${prev[0]}+1)).0" # (X+1).0
-          if [[ "${{github.ref_name}}" != "$val1" ]] && \
-          [[ "${{github.ref_name}}" != "$val2" ]]; then
-              echo "Invalid tag \"${{github.ref_name}}\" when previous tag is 
-              \"$(sed 's/ /./' <<< ${prev[@]})\"."
-              exit 1
+          # If a previous tag is X.Y, valid tags are only X.(Y+1) or (X+1).0
+          if [[ $(git tag -l | wc -l) != 1 ]]; then # If there is only one tag, no need to check
+            prev=($(git tag -l --sort=-v:refname | head -n 2 | tail -n 1 | tr "." " "))
+            val1="${prev[0]}.$((${prev[1]}+1))" # X.(Y+1)
+            val2="$((${prev[0]}+1)).0" # (X+1).0
+            if [[ "${{github.ref_name}}" != "$val1" ]] && \
+            [[ "${{github.ref_name}}" != "$val2" ]]; then
+                echo "Invalid tag \"${{github.ref_name}}\" when previous tag is 
+                \"$(sed 's/ /./' <<< ${prev[@]})\"."
+                exit 1
+            fi
           fi
-          done
   
   get-package-name:
     name: Get package name
@@ -52,6 +53,8 @@ jobs:
     env:
       BUILD_FOLDER: ${{github.workspace}}/build
       PACKAGE_PATH: ${{github.workspace}}/build/noarch/*.tar.bz2
+    permissions:
+      contents: write
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -59,23 +62,24 @@ jobs:
             fetch-tags: true
             fetch-depth: 0 
 
-      - name: Setup conda environment
-        uses: conda-incubator/setup-miniconda@11b562958363ec5770fef326fe8ef0366f8cbf8a
+      - name: Setup conda build environment
+        uses: conda-incubator/setup-miniconda@a4260408e20b96e80095f42ff7f1a15b27dd94ca # v3.0.4
         with:
           miniconda-version: "latest"
-          python-version: ${{ vars.PY_VERSION }}
+          python-version: ${{ vars.PY_VERSION }} 
           environment-file: .conda/env_build.yml
-          auto-update-conda: false
           auto-activate-base: false
+          auto-update-conda: false
           show-channel-urls: true
       
       - name: Build conda package
+        shell: bash -el {0}
         run: |
           conda build . --no-anaconda-upload --output-folder=${{env.BUILD_FOLDER}} -c conda-forge -c accessnri -c coecms
       
-      - name: Upload conda package
-        run: |
-          anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload --user accessnri ${{env.PACKAGE_PATH}}
+      # - name: Upload conda package
+      #   run: |
+      #     anaconda -t ${{ secrets.ANACONDA_TOKEN }} upload --user accessnri ${{env.PACKAGE_PATH}}
       
       - name: Create Release
         uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191 #v2.0.8
