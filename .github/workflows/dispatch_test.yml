@@ -1,0 +1,26 @@
+name: Dispatch test
+
+on:
+  push:
+    branches:
+      - main
+    
+jobs:
+  # Dispatch the access-ram-condaenv repo (within the same GitHub organization) to update the conda environment 
+  # and deploy the new conda environment
+  dispatch-access-ram-condaenv:
+    name: Dispatch the ${{ github.repository_owner }}/access-ram-condaenv repo
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dispatch repo
+      uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # v3.0.0
+      with:
+        token: ${{ secrets.REPO_ACCESS_TOKEN }}
+        repository: ${{ github.repository_owner }}/access-ram-condaenv
+        event-type: release
+        client-payload: |-
+          {
+            "dependency": "replace-landsurface",
+            "version": "1.2",
+            "token": "${{secrets.REPO_ACCESS_TOKEN}}"
+          }
