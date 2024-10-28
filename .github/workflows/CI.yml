@@ -98,4 +98,6 @@ jobs:
         repository: ${{ github.repository_owner }}/access-ram-condaenv
         event-type: prerelease
         client-payload: |-
-          {"token": "${{secrets.REPO_ACCESS_TOKEN}}"}
+          {
+            "token": "${{secrets.REPO_ACCESS_TOKEN}}"
+          }
